@@ -8,7 +8,7 @@
 // "Manual" means the first start after opening foobar2000 or after the user
 // presses Stop. Sequential playback / Next / double-clicking while already
 // playing = bypass.
-// Must be placed in the DSP chain before "Pregap" (Pregap DSP).
+// Must be placed in the DSP chain after "Pregap" (Pregap DSP).
 
 #include <foobar2000/SDK/foobar2000.h>
 #include <atomic>
@@ -16,7 +16,7 @@
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
     "0.2",
-    "Inserts an initial silence only when playback is started manually.");
+    "Inserts 1000ms of initial silence only when playback is started manually.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
