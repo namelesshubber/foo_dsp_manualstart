@@ -1,12 +1,12 @@
 // foo_dsp_manualstart
 // DSP per foobar2000 2.x: ospita un'istanza REALE di "Affix silence"
 // (preset 1000 ms / 0 ms / vuoto) e la attiva solo per la prima traccia
-// avviata "manualmente", con la stessa logica dello script js_panel:
+// avviata "manualmente":
 //   - manuale = primo avvio dopo l'apertura di foobar2000 oppure dopo uno
 //     Stop dell'utente (stop_reason_user)
 //   - sequenziale / Next / doppio clic durante la riproduzione = bypass
 //
-// Va messo nella catena DSP DOPO "Pregap DSP".
+// Va messo nella catena DSP prima di "Pregap DSP".
 
 #include <foobar2000/SDK/foobar2000.h>
 #include <atomic>
@@ -19,7 +19,7 @@ DECLARE_COMPONENT_VERSION(
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
 // ---------------------------------------------------------------------------
-// Dati del preset di Affix silence, ricavati dal tuo preset Manual esportato
+// Dati del preset di Affix silence
 // ---------------------------------------------------------------------------
 
 // GUID: 750FBC09-5337-42D5-9A0F-9E76611D7EC2
@@ -96,7 +96,7 @@ public:
     static GUID g_get_guid() { return guid_this_dsp; }
 
     static void g_get_name(pfc::string_base& out) {
-        out = "Silenzio avvio manuale (host Affix silence)";
+        out = "Host Affix silence";
     }
 
     // In questo SDK dsp::run ha 3 argomenti (niente abort_callback).
