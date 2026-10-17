@@ -36,9 +36,12 @@ jobs:
           $libs = Get-ChildItem "$sdkRoot\foobar2000\shared" -Filter *.lib
           $libs | ForEach-Object { Write-Host "lib trovata: $($_.FullName)" }
           if ("${{ matrix.platform }}" -eq "x64") {
-            $lib = $libs | Where-Object { $_.Name -match 'x64' } | Select-Object -First 1
+            $lib = $libs | Where-Object { $_.Name -match 'x64' -and $_.Name -notmatch 'arm' } | Select-Object -First 1
           } else {
-            $lib = $libs | Where-Object { $_.Name -notmatch 'x64' } | Select-Object -First 1
+            $lib = $libs | Where-Object { $_.Name -match 'Win32|x86' } | Select-Object -First 1
+            if (-not $lib) {
+              $lib = $libs | Where-Object { $_.Name -eq 'shared.lib' } | Select-Object -First 1
+            }
           }
           if (-not $lib) { throw "libreria shared non trovata per ${{ matrix.platform }}" }
           Write-Host "Uso: $($lib.FullName)"
