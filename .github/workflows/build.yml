@@ -33,6 +33,11 @@ jobs:
 
           Copy-Item -Path foo_dsp_manualstart -Destination "$sdkRoot\foo_dsp_manualstart" -Recurse
 
+          # Le librerie dell'SDK sono configurate /MD: le ricompiliamo tutte /MT
+          # (runtime C statico) cosi' la DLL non richiede redistributable su Windows 7.
+          $xml = '<Project><ItemDefinitionGroup><ClCompile><RuntimeLibrary>MultiThreaded</RuntimeLibrary></ClCompile></ItemDefinitionGroup></Project>'
+          Set-Content -Path "$sdkRoot\Directory.Build.targets" -Value $xml -Encoding utf8
+
           $libs = Get-ChildItem "$sdkRoot\foobar2000\shared" -Filter *.lib
           $libs | ForEach-Object { Write-Host "lib trovata: $($_.FullName)" }
           if ("${{ matrix.platform }}" -eq "x64") {
