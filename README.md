@@ -2,6 +2,7 @@
 
 A DSP for foobar2000 2.26 that hosts "Affix silence" (1000 ms / 0 ms / empty),
 applied only to the first track started manually or after a user-initiated "Stop."
+
 Sequential playback, skipping to the next track, or double-clicking a track during playback = no silence added.
 
 ## Usage
