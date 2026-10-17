@@ -16,7 +16,7 @@
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
     "0.2",
-    "Inserts 1000ms of initial silence only when playback is started manually.");
+    "Inserts 1000 ms of initial silence only when playback is started manually.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
