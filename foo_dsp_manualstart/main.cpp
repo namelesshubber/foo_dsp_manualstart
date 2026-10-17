@@ -99,8 +99,9 @@ public:
         out = "Silenzio avvio manuale (host Affix silence)";
     }
 
+    // In questo SDK dsp::run ha 3 argomenti (niente abort_callback).
     void run(dsp_chunk_list* list, const metadb_handle_ptr& cur_file,
-             int flags, abort_callback& abort) override {
+             int flags) override {
 
         // Nuova armatura: crea un'istanza fresca di Affix silence.
         if (g_arm_silence.exchange(false)) {
@@ -108,7 +109,7 @@ public:
         }
 
         if (m_inner.is_valid()) {
-            m_inner->run(list, cur_file, flags, abort);
+            m_inner->run(list, cur_file, flags);
 
             // Fine traccia o flush: l'effetto vale solo per la prima traccia.
             if (flags & (dsp::END_OF_TRACK | dsp::FLUSH)) {
