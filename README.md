@@ -8,10 +8,14 @@ Sequential playback, skipping to the next track, or double-clicking a track duri
 ## Usage
 
 Install the Pregap DSP component.
+
 Install the Affix silence component.
+
 Installing the DLL:
+
 - 64-bit foobar2000: Copy `foo_dsp_manualstart.dll` (x64 artifact) to
 `<profile>\user-components-x64\foo_dsp_manualstart\`
+
 - 32-bit foobar2000: Copy the DLL (Win32 artifact) to
 `<profile>\user-components\foo_dsp_manualstart\`
 
@@ -21,4 +25,5 @@ foobar2000 folder itself if using portable mode).
 Restart foobar2000.
 
 Set the default chain as follows:
+
 `Host Affix silence -> Pregap`
