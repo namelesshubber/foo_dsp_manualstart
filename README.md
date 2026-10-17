@@ -1,17 +1,18 @@
 # foo_dsp_manualstart
 
-A DSP for foobar2000 2.26 that hosts "Affix silence" (1000 ms / 0 ms / [empty]),
-applied only to the first track started manually or after a user-initiated "Stop."
+A DSP for foobar2000 2.26 that inserts 1000 ms of silence at the beginning of the first track started manually or after a user-initiated "Stop."
 
 Sequential playback, skipping to the next track, or double-clicking a track during playback = no silence added.
 
-## Usage
+## Install process and Usage
 
-Install the Pregap DSP component.
+Install the Pregap DSP component (https://foobar.hyv.fi/?view=foo_dsp_pregap), set it to 500ms, and toggle on:
 
-Install the Affix silence component.
+- Add silence after manual track change
 
-Installing the DLL:
+- Add silence if audio format change
+
+Install the foo_dsp_manualstart DLL:
 
 - 64-bit foobar2000: Copy `foo_dsp_manualstart.dll` (x64) to
 `<profile>\user-components-x64\foo_dsp_manualstart\`
@@ -26,4 +27,4 @@ Restart foobar2000.
 
 Set the default chain as follows:
 
-`Host Affix silence -> Pregap`
+`Pregap -> Manual start silence`
