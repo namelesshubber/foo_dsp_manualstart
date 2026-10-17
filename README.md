@@ -1,20 +1,23 @@
 # foo_dsp_manualstart
 
-DSP per foobar2000 2.26 che ospita Affix silence (1000 ms / 0 ms / vuoto)
-solo per la prima traccia avviata manualmente.
+A DSP for foobar2000 2.26 that hosts "Affix silence" (1000 ms / 0 ms / empty),
+applied only to the first track started manually or after a user-initiated "Stop."
+Sequential playback, skipping to the next track, or double-clicking a track during playback = no silence added.
 
-## Uso
+## Usage
 
-1. Catena DSP: `Silenzio avvio manuale (host Affix silence) -> Pregap DSP -> ...`
-2. Manuale = primo play dopo l'apertura di foobar2000 o dopo uno Stop utente.
-   Sequenziale, Next e doppio clic durante la riproduzione = nessun silenzio.
+Install the Pregap DSP component.
+Install the Affix silence component.
+Installing the DLL:
+- 64-bit foobar2000: Copy `foo_dsp_manualstart.dll` (x64 artifact) to
+`<profile>\user-components-x64\foo_dsp_manualstart\`
+- 32-bit foobar2000: Copy the DLL (Win32 artifact) to
+`<profile>\user-components\foo_dsp_manualstart\`
 
-## Installazione della DLL
+The profile folder can be accessed via File > Open profile folder (or it is the
+foobar2000 folder itself if using portable mode).
 
-- foobar2000 a 64 bit: copia `foo_dsp_manualstart.dll` (artifact x64) in
-  `<profilo>\user-components-x64\foo_dsp_manualstart\`
-- foobar2000 a 32 bit: copia la DLL (artifact Win32) in
-  `<profilo>\user-components\foo_dsp_manualstart\`
+Restart foobar2000.
 
-Il profilo si apre da File > Open profile folder (o e' la cartella
-di foobar2000 in modalita' portable). Riavvia foobar2000.
+Set the default chain as follows:
+DSP chain: `Host Affix silence -> Pregap`
