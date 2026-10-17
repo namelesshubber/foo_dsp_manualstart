@@ -16,30 +16,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ambiente MSVC
+      - name: MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Scarica e prepara l'SDK di foobar2000
+      - name: Download and prepare the foobar2000 SDK
         shell: pwsh
         run: |
           curl.exe -L --fail -o sdk.7z https://www.foobar2000.org/files/SDK-2025-03-07.7z
           7z x sdk.7z -osdk -y | Out-Null
 
           $pfc = Get-ChildItem -Path sdk -Recurse -Filter pfc.vcxproj | Select-Object -First 1
-          if (-not $pfc) { throw "pfc.vcxproj non trovato nell'SDK" }
+          if (-not $pfc) { throw "pfc.vcxproj not found in the SDK" }
           $sdkRoot = $pfc.Directory.Parent.FullName
           Write-Host "SDK root: $sdkRoot"
           "SDK_ROOT=$sdkRoot" >> $env:GITHUB_ENV
 
           Copy-Item -Path foo_dsp_manualstart -Destination "$sdkRoot\foo_dsp_manualstart" -Recurse
-
-          # Le librerie dell'SDK sono configurate /MD: le ricompiliamo tutte /MT
-          # (runtime C statico) cosi' la DLL non richiede redistributable su Windows 7.
+          
           $xml = '<Project><ItemDefinitionGroup><ClCompile><RuntimeLibrary>MultiThreaded</RuntimeLibrary></ClCompile></ItemDefinitionGroup></Project>'
           Set-Content -Path "$sdkRoot\Directory.Build.targets" -Value $xml -Encoding utf8
 
           $libs = Get-ChildItem "$sdkRoot\foobar2000\shared" -Filter *.lib
-          $libs | ForEach-Object { Write-Host "lib trovata: $($_.FullName)" }
+          $libs | ForEach-Object { Write-Host "lib found: $($_.FullName)" }
           if ("${{ matrix.platform }}" -eq "x64") {
             $lib = $libs | Where-Object { $_.Name -match 'x64' -and $_.Name -notmatch 'arm' } | Select-Object -First 1
           } else {
@@ -48,11 +46,11 @@ jobs:
               $lib = $libs | Where-Object { $_.Name -eq 'shared.lib' } | Select-Object -First 1
             }
           }
-          if (-not $lib) { throw "libreria shared non trovata per ${{ matrix.platform }}" }
-          Write-Host "Uso: $($lib.FullName)"
+          if (-not $lib) { throw "shared lib not found for ${{ matrix.platform }}" }
+          Write-Host "Using: $($lib.FullName)"
           "SHARED_LIB=$($lib.FullName)" >> $env:GITHUB_ENV
 
-      - name: Compila
+      - name: Compile
         shell: pwsh
         run: |
           msbuild "$env:SDK_ROOT\foo_dsp_manualstart\foo_dsp_manualstart.vcxproj" `
@@ -63,18 +61,18 @@ jobs:
             /p:SharedLib="$env:SHARED_LIB" `
             /m /v:minimal
 
-      - name: Verifica la DLL
+      - name: Verify the DLL
         shell: pwsh
         run: |
           $dll = "$env:SDK_ROOT\foo_dsp_manualstart\out\${{ matrix.platform }}\foo_dsp_manualstart.dll"
-          if (-not (Test-Path $dll)) { throw "DLL non prodotta: $dll" }
+          if (-not (Test-Path $dll)) { throw "DLL not produced: $dll" }
           $exports = dumpbin /exports $dll | Out-String
           Write-Host $exports
-          if ($exports -notmatch 'foobar2000_get_interface') { throw "Export foobar2000_get_interface mancante" }
+          if ($exports -notmatch 'foobar2000_get_interface') { throw "Export foobar2000_get_interface missing" }
           dumpbin /dependents $dll
           Copy-Item $dll "foo_dsp_manualstart.dll"
 
-      - name: Pubblica la DLL
+      - name: Publish the DLL
         uses: actions/upload-artifact@v4
         with:
           name: foo_dsp_manualstart-${{ matrix.platform }}
