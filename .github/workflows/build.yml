@@ -1,0 +1,73 @@
+name: Build foo_dsp_manualstart
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [Win32, x64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ambiente MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Scarica e prepara l'SDK di foobar2000
+        shell: pwsh
+        run: |
+          curl.exe -L --fail -o sdk.7z https://www.foobar2000.org/files/SDK-2025-03-07.7z
+          7z x sdk.7z -osdk -y | Out-Null
+
+          $pfc = Get-ChildItem -Path sdk -Recurse -Filter pfc.vcxproj | Select-Object -First 1
+          if (-not $pfc) { throw "pfc.vcxproj non trovato nell'SDK" }
+          $sdkRoot = $pfc.Directory.Parent.FullName
+          Write-Host "SDK root: $sdkRoot"
+          "SDK_ROOT=$sdkRoot" >> $env:GITHUB_ENV
+
+          Copy-Item -Path foo_dsp_manualstart -Destination "$sdkRoot\foo_dsp_manualstart" -Recurse
+
+          $libs = Get-ChildItem "$sdkRoot\foobar2000\shared" -Filter *.lib
+          $libs | ForEach-Object { Write-Host "lib trovata: $($_.FullName)" }
+          if ("${{ matrix.platform }}" -eq "x64") {
+            $lib = $libs | Where-Object { $_.Name -match 'x64' } | Select-Object -First 1
+          } else {
+            $lib = $libs | Where-Object { $_.Name -notmatch 'x64' } | Select-Object -First 1
+          }
+          if (-not $lib) { throw "libreria shared non trovata per ${{ matrix.platform }}" }
+          Write-Host "Uso: $($lib.FullName)"
+          "SHARED_LIB=$($lib.FullName)" >> $env:GITHUB_ENV
+
+      - name: Compila
+        shell: pwsh
+        run: |
+          msbuild "$env:SDK_ROOT\foo_dsp_manualstart\foo_dsp_manualstart.vcxproj" `
+            /p:Configuration=Release `
+            /p:Platform=${{ matrix.platform }} `
+            /p:PlatformToolset=v143 `
+            /p:WindowsTargetPlatformVersion=10.0 `
+            /p:SharedLib="$env:SHARED_LIB" `
+            /m /v:minimal
+
+      - name: Verifica la DLL
+        shell: pwsh
+        run: |
+          $dll = "$env:SDK_ROOT\foo_dsp_manualstart\out\${{ matrix.platform }}\foo_dsp_manualstart.dll"
+          if (-not (Test-Path $dll)) { throw "DLL non prodotta: $dll" }
+          $exports = dumpbin /exports $dll | Out-String
+          Write-Host $exports
+          if ($exports -notmatch 'foobar2000_get_interface') { throw "Export foobar2000_get_interface mancante" }
+          dumpbin /dependents $dll
+          Copy-Item $dll "foo_dsp_manualstart.dll"
+
+      - name: Pubblica la DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: foo_dsp_manualstart-${{ matrix.platform }}
+          path: foo_dsp_manualstart.dll
