@@ -20,4 +20,4 @@ foobar2000 folder itself if using portable mode).
 Restart foobar2000.
 
 Set the default chain as follows:
-DSP chain: `Host Affix silence -> Pregap`
+`Host Affix silence -> Pregap`
