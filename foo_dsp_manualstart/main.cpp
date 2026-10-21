@@ -32,7 +32,7 @@ static constexpr t_uint64 kSilenceMs = 1000;
 
 // Diagnostic logging to the foobar2000 console (View > Console).
 // Set to false to disable.
-static constexpr bool kLog = false;
+static constexpr bool kLog = true;
 
 // GUID of this DSP. Keep it unchanged between versions so that existing DSP
 // chains continue to reference the component.
