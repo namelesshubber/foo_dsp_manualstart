@@ -17,37 +17,27 @@
 // and a PCM file is started afterwards.
 // Must be placed in the DSP chain after "Pregap" (Pregap DSP).
 
-#include <foobar2000/SDK/foobar2000.h>
+#define FOOBAR2000_DESKTOP
+#include "../../../foobar2000/SDK/foobar2000.h"
 #include <atomic>
 
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
-    "0.3",
-    "Inserts 1000 ms of initial silence only when playback is started manually.");
+    "0.4",
+    "Inserts initial silence on manual start and format changes.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
-// Length of the initial silence in milliseconds.
 static constexpr t_uint64 kSilenceMs = 1000;
+static constexpr bool kLog = true; // Abilitato per debug
 
-// Diagnostic logging to the foobar2000 console (View > Console).
-// Set to false to disable.
-static constexpr bool kLog = true;
-
-// GUID of this DSP. Keep it unchanged between versions so that existing DSP
-// chains continue to reference the component.
 static const GUID guid_this_dsp =
     { 0xB3A1F2C4, 0x6D58, 0x4E1A, { 0x9C, 0x07, 0x2F, 0x4A, 0x8D, 0x1E, 0x5B, 0x93 } };
 
-// true = the next playback start counts as "manual".
-// Initially true, which covers the very first playback after launching foobar2000.
 static std::atomic<bool> g_next_start_is_manual{ true };
+static std::atomic<bool> g_arm_silence{ true }; // Partiamo armati al cold start
 
-// true = the next chunk that goes through the DSP gets the initial silence.
-// Cleared ONLY when the silence has actually been inserted.
-static std::atomic<bool> g_arm_silence{ false };
-
-// Last audio format seen by the DSP (used for logging only).
+// Ultimo formato audio visto dal DSP
 static std::atomic<unsigned> g_last_srate{ 0 };
 static std::atomic<unsigned> g_last_nch{ 0 };
 
@@ -62,7 +52,6 @@ public:
         if (manual) {
             g_arm_silence = true;
         }
-        // A non-manual start does NOT disarm a silence that is still pending.
         if (kLog) {
             FB2K_console_formatter() << "foo_dsp_manualstart: playback starting, manual="
                 << (manual ? "yes" : "no") << ", silence armed="
@@ -71,9 +60,9 @@ public:
     }
 
     void on_playback_stop(play_control::t_stop_reason reason) override {
-        // Only a user-initiated Stop makes the next start manual again.
         if (reason == play_control::stop_reason_user) {
             g_next_start_is_manual = true;
+            g_arm_silence = true; // Riarmiamo sempre allo stop utente
         }
         if (kLog) {
             FB2K_console_formatter() << "foo_dsp_manualstart: playback stopped, reason="
@@ -82,8 +71,12 @@ public:
     }
 
     void on_playback_new_track(metadb_handle_ptr track) override {
+        // Quando cambia traccia (es. da DSD a PCM), armiamo preventivamente il silenzio 
+        // per coprire l'inizializzazione dell'hardware del DAC se cambia flusso.
+        g_arm_silence = true;
+        
         if (kLog && track.is_valid()) {
-            FB2K_console_formatter() << "foo_dsp_manualstart: new track: " << track->get_path();
+            FB2K_console_formatter() << "foo_dsp_manualstart: new track (silence re-armed): " << track->get_path();
         }
     }
 
@@ -101,21 +94,28 @@ static play_callback_static_factory_t<manualstart_play_callback> g_play_callback
 class dsp_manualstart : public dsp_impl_base {
 public:
     static GUID g_get_guid() { return guid_this_dsp; }
-
     static void g_get_name(pfc::string_base& out) { out = "Manual start silence"; }
 
     bool on_chunk(audio_chunk* chunk, abort_callback&) override {
         const unsigned srate = chunk->get_srate();
         const unsigned nch = chunk->get_channel_count();
 
-        if (kLog && (srate != g_last_srate.load() || nch != g_last_nch.load())) {
-            g_last_srate = srate;
-            g_last_nch = nch;
-            FB2K_console_formatter() << "foo_dsp_manualstart: DSP is receiving audio at "
-                << (t_uint64)srate << " Hz, " << (t_uint64)nch << " channels";
+        // Controllo se il formato è cambiato rispetto a prima (es. transizione DSD -> PCM con sample rate differenti)
+        unsigned last_sr = g_last_srate.load();
+        unsigned last_ch = g_last_nch.load();
+
+        if (last_sr != 0 && (last_sr != srate || last_ch != nch)) {
+            g_arm_silence = true; // Forziamo il silenzio sul cambio di formato!
+            if (kLog) {
+                FB2K_console_formatter() << "foo_dsp_manualstart: Format change detected (" 
+                    << last_sr << "Hz -> " << srate << "Hz). Silence re-armed.";
+            }
         }
 
-        // Only the first chunk after a manual start receives the silence.
+        g_last_srate = srate;
+        g_last_nch = nch;
+
+        // Se il silenzio è armato, lo consumiamo sul primo chunk utile
         if (g_arm_silence.exchange(false)) {
             const t_size frames = (t_size)((t_uint64)srate * kSilenceMs / 1000);
             if (frames > 0) {
@@ -132,6 +132,11 @@ public:
     void on_endofplayback(abort_callback&) override {}
     void on_endoftrack(abort_callback&) override {}
     void flush() override {}
+    double get_latency() override { return 0.0; }
+    bool need_track_change_mark() override { return false; }
+};
+
+static dsp_factory_nopreset_t<dsp_manualstart> g_dsp_factory;
     double get_latency() override { return 0.0; }
     bool need_track_change_mark() override { return false; }
 };
