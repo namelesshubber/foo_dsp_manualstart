@@ -12,9 +12,13 @@ off the beginning of the first track. It does not depend on any other component.
    playback after you pressed Stop. Sequential (gapless) track changes, Next, and
    double-clicking a track while playing do not add any silence.
 
-The silence stays pending until audio actually passes through the DSP. If the
-first file played bypasses the DSP chain (for example native DSD output), the
-first PCM file played afterwards receives the silence instead.
+The manual-start silence stays pending until audio actually passes through the
+DSP, so it is not lost if the first file played bypasses the DSP chain.
+
+In addition, the **first audio format change** (sample rate or channel count)
+after foobar2000 is launched also receives the silence, once. This helps outputs
+that need to be re-initialised the first time the format changes, for example
+when switching from a DSD-converted stream to a PCM file.
 
 ## Installation
 
