@@ -17,29 +17,29 @@
 // and a PCM file is started afterwards.
 // Must be placed in the DSP chain after "Pregap" (Pregap DSP).
 
-
 #include <foobar2000/SDK/foobar2000.h>
 #include <atomic>
 
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
-    "0.4",
-    "Inserts 1000 ms of initial silence only when playback is started manually.");
+    "0.6",
+    "Inserts 1000 ms of initial silence only on manual start.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
 static constexpr t_uint64 kSilenceMs = 1000;
-static constexpr bool kLog = true; // Abilitato per debug
+static constexpr bool kLog = true;
 
 static const GUID guid_this_dsp =
     { 0xB3A1F2C4, 0x6D58, 0x4E1A, { 0x9C, 0x07, 0x2F, 0x4A, 0x8D, 0x1E, 0x5B, 0x93 } };
 
 static std::atomic<bool> g_next_start_is_manual{ true };
-static std::atomic<bool> g_arm_silence{ true }; // Partiamo armati al cold start
+static std::atomic<bool> g_arm_silence{ false };
 
-// Ultimo formato audio visto dal DSP
 static std::atomic<unsigned> g_last_srate{ 0 };
 static std::atomic<unsigned> g_last_nch{ 0 };
+// Traccia se abbiamo già visto un flusso audio valido dopo l'avvio manuale
+static std::atomic<bool> g_has_seen_audio{ false };
 
 class manualstart_play_callback : public play_callback_static {
 public:
@@ -51,6 +51,7 @@ public:
         const bool manual = g_next_start_is_manual.exchange(false);
         if (manual) {
             g_arm_silence = true;
+            g_has_seen_audio = false; // Reset dello stato audio al nuovo avvio manuale
         }
         if (kLog) {
             FB2K_console_formatter() << "foo_dsp_manualstart: playback starting, manual="
@@ -62,7 +63,6 @@ public:
     void on_playback_stop(play_control::t_stop_reason reason) override {
         if (reason == play_control::stop_reason_user) {
             g_next_start_is_manual = true;
-            g_arm_silence = true; // Riarmiamo sempre allo stop utente
         }
         if (kLog) {
             FB2K_console_formatter() << "foo_dsp_manualstart: playback stopped, reason="
@@ -71,12 +71,10 @@ public:
     }
 
     void on_playback_new_track(metadb_handle_ptr track) override {
-        // Quando cambia traccia (es. da DSD a PCM), armiamo preventivamente il silenzio 
-        // per coprire l'inizializzazione dell'hardware del DAC se cambia flusso.
-        g_arm_silence = true;
-        
+        // NESSUN armamento forzato qui: il silenzio deve dipendere unicamente 
+        // dall'avvio manuale, come da tua precisa richiesta.
         if (kLog && track.is_valid()) {
-            FB2K_console_formatter() << "foo_dsp_manualstart: new track (silence re-armed): " << track->get_path();
+            FB2K_console_formatter() << "foo_dsp_manualstart: new track: " << track->get_path();
         }
     }
 
@@ -100,27 +98,24 @@ public:
         const unsigned srate = chunk->get_srate();
         const unsigned nch = chunk->get_channel_count();
 
-        // Controllo se il formato è cambiato rispetto a prima (es. transizione DSD -> PCM con sample rate differenti)
-        unsigned last_sr = g_last_srate.load();
-        unsigned last_ch = g_last_nch.load();
-
-        if (last_sr != 0 && (last_sr != srate || last_ch != nch)) {
-            g_arm_silence = true; // Forziamo il silenzio sul cambio di formato!
-            if (kLog) {
-                FB2K_console_formatter() << "foo_dsp_manualstart: Format change detected (" 
-                    << last_sr << "Hz -> " << srate << "Hz). Silence re-armed.";
+        if (kLog) {
+            unsigned last_sr = g_last_srate.load();
+            if (last_sr != srate || g_last_nch.load() != nch) {
+                g_last_srate = srate;
+                g_last_nch = nch;
+                FB2K_console_formatter() << "foo_dsp_manualstart: DSP is receiving audio at "
+                    << (t_uint64)srate << " Hz, " << (t_uint64)nch << " channels";
             }
         }
 
-        g_last_srate = srate;
-        g_last_nch = nch;
-
-        // Se il silenzio è armato, lo consumiamo sul primo chunk utile
+        // Se è il primo chunk audio utile che passa dal DSP dopo un avvio manuale 
+        // (e il DSD precedente aveva lasciato il silenzio armato perché lo aveva saltato)
         if (g_arm_silence.exchange(false)) {
             const t_size frames = (t_size)((t_uint64)srate * kSilenceMs / 1000);
             if (frames > 0) {
                 chunk->insert_silence_fromstart(frames);
             }
+            g_has_seen_audio = true;
             if (kLog) {
                 FB2K_console_formatter() << "foo_dsp_manualstart: silence inserted ("
                     << (t_uint64)frames << " frames at " << (t_uint64)srate << " Hz)";
