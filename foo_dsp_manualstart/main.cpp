@@ -17,14 +17,14 @@
 // and a PCM file is started afterwards.
 // Must be placed in the DSP chain after "Pregap" (Pregap DSP).
 
-#define FOOBAR2000_DESKTOP
-#include "../../../foobar2000/SDK/foobar2000.h"
+
+#include <foobar2000/SDK/foobar2000.h>
 #include <atomic>
 
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
     "0.4",
-    "Inserts initial silence on manual start and format changes.");
+    "Inserts 1000 ms of initial silence only when playback is started manually.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
@@ -132,11 +132,6 @@ public:
     void on_endofplayback(abort_callback&) override {}
     void on_endoftrack(abort_callback&) override {}
     void flush() override {}
-    double get_latency() override { return 0.0; }
-    bool need_track_change_mark() override { return false; }
-};
-
-static dsp_factory_nopreset_t<dsp_manualstart> g_dsp_factory;
     double get_latency() override { return 0.0; }
     bool need_track_change_mark() override { return false; }
 };
