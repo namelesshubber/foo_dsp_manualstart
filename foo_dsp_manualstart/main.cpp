@@ -1,4 +1,4 @@
-// foo_dsp_manualstart (v0.7)
+// foo_dsp_manualstart (v0.6)
 //
 // A foobar2000 2.x DSP that inserts a short silence (1000 ms by default) at the
 // start of the first audio chunk, but ONLY when playback is started manually.
@@ -22,8 +22,8 @@
 
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
-    "0.7",
-    "Inserts 1000 ms of initial silence strictly on manual start.");
+    "0.6",
+    "Inserts 1000 ms of initial silence only on manual start.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
@@ -36,6 +36,10 @@ static const GUID guid_this_dsp =
 static std::atomic<bool> g_next_start_is_manual{ true };
 static std::atomic<bool> g_arm_silence{ false };
 
+static std::atomic<unsigned> g_last_srate{ 0 };
+static std::atomic<unsigned> g_last_nch{ 0 };
+static std::atomic<bool> g_has_seen_audio{ false };
+
 class manualstart_play_callback : public play_callback_static {
 public:
     unsigned get_flags() override {
@@ -46,6 +50,7 @@ public:
         const bool manual = g_next_start_is_manual.exchange(false);
         if (manual) {
             g_arm_silence = true;
+            g_has_seen_audio = false;
         }
         if (kLog) {
             FB2K_console_formatter() << "foo_dsp_manualstart: playback starting, manual="
@@ -82,10 +87,6 @@ public:
 static play_callback_static_factory_t<manualstart_play_callback> g_play_callback_factory;
 
 class dsp_manualstart : public dsp_impl_base {
-private:
-    unsigned m_last_srate = 0;
-    unsigned m_last_nch = 0;
-
 public:
     static GUID g_get_guid() { return guid_this_dsp; }
     static void g_get_name(pfc::string_base& out) { out = "Manual start silence"; }
@@ -94,11 +95,14 @@ public:
         const unsigned srate = chunk->get_srate();
         const unsigned nch = chunk->get_channel_count();
 
-        if (kLog && (m_last_srate != srate || m_last_nch != nch)) {
-            m_last_srate = srate;
-            m_last_nch = nch;
-            FB2K_console_formatter() << "foo_dsp_manualstart: DSP is receiving audio at "
-                << (t_uint64)srate << " Hz, " << (t_uint64)nch << " channels";
+        if (kLog) {
+            unsigned last_sr = g_last_srate.load();
+            if (last_sr != srate || g_last_nch.load() != nch) {
+                g_last_srate = srate;
+                g_last_nch = nch;
+                FB2K_console_formatter() << "foo_dsp_manualstart: DSP is receiving audio at "
+                    << (t_uint64)srate << " Hz, " << (t_uint64)nch << " channels";
+            }
         }
 
         if (g_arm_silence.exchange(false)) {
@@ -106,6 +110,7 @@ public:
             if (frames > 0) {
                 chunk->insert_silence_fromstart(frames);
             }
+            g_has_seen_audio = true;
             if (kLog) {
                 FB2K_console_formatter() << "foo_dsp_manualstart: silence inserted ("
                     << (t_uint64)frames << " frames at " << (t_uint64)srate << " Hz)";
