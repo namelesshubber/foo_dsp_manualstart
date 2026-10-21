@@ -38,7 +38,6 @@ static std::atomic<bool> g_arm_silence{ false };
 
 static std::atomic<unsigned> g_last_srate{ 0 };
 static std::atomic<unsigned> g_last_nch{ 0 };
-// Traccia se abbiamo già visto un flusso audio valido dopo l'avvio manuale
 static std::atomic<bool> g_has_seen_audio{ false };
 
 class manualstart_play_callback : public play_callback_static {
@@ -51,7 +50,7 @@ public:
         const bool manual = g_next_start_is_manual.exchange(false);
         if (manual) {
             g_arm_silence = true;
-            g_has_seen_audio = false; // Reset dello stato audio al nuovo avvio manuale
+            g_has_seen_audio = false;
         }
         if (kLog) {
             FB2K_console_formatter() << "foo_dsp_manualstart: playback starting, manual="
@@ -71,8 +70,6 @@ public:
     }
 
     void on_playback_new_track(metadb_handle_ptr track) override {
-        // NESSUN armamento forzato qui: il silenzio deve dipendere unicamente 
-        // dall'avvio manuale, come da tua precisa richiesta.
         if (kLog && track.is_valid()) {
             FB2K_console_formatter() << "foo_dsp_manualstart: new track: " << track->get_path();
         }
@@ -108,8 +105,6 @@ public:
             }
         }
 
-        // Se è il primo chunk audio utile che passa dal DSP dopo un avvio manuale 
-        // (e il DSD precedente aveva lasciato il silenzio armato perché lo aveva saltato)
         if (g_arm_silence.exchange(false)) {
             const t_size frames = (t_size)((t_uint64)srate * kSilenceMs / 1000);
             if (frames > 0) {
