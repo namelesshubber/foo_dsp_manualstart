@@ -27,7 +27,7 @@
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
     "0.4",
-    "Inserts initial silence only when playback is started manually.");
+    "Inserts 1000 ms of initial silence only when playback is started manually.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
@@ -36,7 +36,7 @@ static constexpr t_uint64 kSilenceMs = 1000;
 
 // Diagnostic logging to the foobar2000 console (View > Console).
 // Set to false to disable.
-static constexpr bool kLog = true;
+static constexpr bool kLog = false;
 
 // GUID of this DSP. Keep it unchanged between versions so that existing DSP
 // chains continue to reference the component.
