@@ -1,10 +1,22 @@
 # foo_dsp_manualstart
 
-A DSP for foobar2000 2.26 that inserts 1000 ms of silence at the beginning of the first track started manually or after a user-initiated "Stop."
+A foobar2000 2.x DSP that inserts 1000 ms of silence at the start of a track
+**only when playback is started manually**. It is useful for DACs and receivers
+that need a moment to initialise after being powered on, and would otherwise cut
+off the beginning of the first track. It does not depend on any other component.
 
-Sequential playback, skipping to the next track, or double-clicking a track during playback = no silence added.
+## Usage
 
-## Install process and Usage
+1. Add **Manual start silence** to your DSP chain (Preferences > Playback > DSP Manager).
+2. "Manual" means the first playback after foobar2000 is launched, or the first
+   playback after you pressed Stop. Sequential (gapless) track changes, Next, and
+   double-clicking a track while playing do not add any silence.
+
+The silence stays pending until audio actually passes through the DSP. If the
+first file played bypasses the DSP chain (for example native DSD output), the
+first PCM file played afterwards receives the silence instead.
+
+## Installation
 
 Install the Pregap DSP component (https://foobar.hyv.fi/?view=foo_dsp_pregap), set it to 500ms, and toggle on:
 
@@ -14,17 +26,8 @@ Install the Pregap DSP component (https://foobar.hyv.fi/?view=foo_dsp_pregap), s
 
 Install the foo_dsp_manualstart DLL:
 
-- 64-bit foobar2000: Copy `foo_dsp_manualstart.dll` (x64) to
-`<profile>\user-components-x64\foo_dsp_manualstart\`
+Copy `foo_dsp_manualstart.dll` into your foobar2000 profile folder
+(File > Open profile folder) and restart foobar2000:
 
-- 32-bit foobar2000: Copy `foo_dsp_manualstart.dll` (Win32) to
-`<profile>\user-components\foo_dsp_manualstart\`
-
-The profile folder can be accessed via File > Open profile folder (or it is the
-foobar2000 folder itself if using portable mode).
-
-Restart foobar2000.
-
-Set the default chain as follows:
-
-`Pregap -> Manual start silence`
+- 64-bit foobar2000: `user-components-x64\foo_dsp_manualstart\`
+- 32-bit foobar2000: `user-components\foo_dsp_manualstart\`
