@@ -20,8 +20,6 @@
 //
 // The pending manual-start silence stays "armed" until a chunk actually consumes
 // it, so it is not lost if the first file played bypasses the DSP chain.
-//
-// Must be placed in the DSP chain after "Pregap" (Pregap DSP).
 
 #include <foobar2000/SDK/foobar2000.h>
 #include <atomic>
@@ -29,7 +27,7 @@
 DECLARE_COMPONENT_VERSION(
     "Manual start silence",
     "0.4",
-    "Inserts 1000 ms of initial silence only when playback is started manually.");
+    "Inserts initial silence only when playback is started manually.");
 
 VALIDATE_COMPONENT_FILENAME("foo_dsp_manualstart.dll");
 
